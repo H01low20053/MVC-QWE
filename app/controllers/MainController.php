@@ -10,5 +10,4 @@ class MainController extends InitController
     {
         $this->render('index');
     }
-
 }

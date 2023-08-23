@@ -4,11 +4,38 @@ namespace app\controllers;
 
 use app\core\InitController;
 use app\lib\UserOperations;
+use app\models\UsersModel;
+use http\Client\Curl\User;
+use http\Params;
 
 class UserController extends InitController
 {
-    public function actionProfile(){
-        echo "Страница профиля";
+    public function actionProfile()
+    {
+        $this->view->title = 'Мой профиль';
+        $error_message = '';
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['btn_change_password_form'])){
+            $current_password = !empty($_POST['current_password']) ? $_POST['current_password'] : null;
+            $new_password = !empty($_POST['new_password']) ? $_POST['new_password'] : null;
+            $confirm_new_password = !empty($_POST['confirm_new_password']) ? $_POST['confirm_new_password'] : null;
+
+
+        $UserModel = new UsersModel();
+        $result_auth = $UserModel->ChangePasswordByCurrentPassword(
+          $current_password, $new_password, $confirm_new_password
+        );
+        if ($result_auth['result']) {
+            $this->redirect('/user/profile');
+        } else{
+            $error_message = $result_auth['error_message'];
+        }
+        }
+
+        $this->render('profile', [
+            'sidebar' => UserOperations::getMenuLinks(),
+            'error_message' => $error_message
+        ]);
     }
     public function behaviors()
     {
@@ -16,16 +43,23 @@ class UserController extends InitController
             'access' => [
                 'rules' => [
                     [
-                        'actions' => ['login', 'registration'],
-                        'roles' => [UserOperations::RoleGuest],
+                        'actions' => ['profile', 'logout'],
+                        'roles' => [UserOperations::RoleGuest , UserOperations::RoleAdmin],
                         'matchCallback' => function()
                     {
-                       $this->redirect('/user/profile');
+                       $this->redirect('/user/login');
                     }
-                        ]
+                    ],
+                    [
+                        'actions' => ['users'],
+                        'roles' => [UserOperations::RoleAdmin],
+                        'matchCallback' => function () {
+                            $this->redirect('/user/profile');
+                        }
                     ]
                 ]
-            ];
+            ]
+        ];
     }
     public function actionRegistration()
     {
@@ -62,6 +96,51 @@ class UserController extends InitController
         }
         $this->render('registration',[
             'error_message' => $error_message
+        ]);
+    }
+
+    public function actionLogin()
+    {
+        $this->view->title = 'Авторизация';
+        $error_message =  '';
+        if ($_SESSION['REQUEST_METHOD'] === 'POST' && !empty($_POST['btn_registration_form'])) {
+            $login = !empty($_POST['login']) ? $_POST['login'] : null;
+            $password = !empty($_POST['password']) ?  $_POST['password'] : null;
+
+            $userModel = new UsersModel();
+            $result_auth = $userModel->authbyLogin($login,$password);
+            if ($result_auth['result']) {
+                $this ->redirect('/user/profile');
+            } else {
+                $error_message = $result_auth['error_message'];
+            }
+        }
+
+        $this->render('login', [
+            'error_message' => $error_message
+            ]);
+    }
+
+    public function actionLogout()
+    {
+        if (isset($_SESSION['user']['id'])) {
+            unset($_SESSION['user']);
+        }
+        $params = require 'app/config/params.php';
+        $this->redirect('/' . $params['defaultController'] . '/' . $params['defaultAction']);
+    }
+
+    public function actionUsers()
+    {
+        $this->view->title = 'Пользователи';
+
+        $userModel = new UsersModel();
+        $users = $userModel->getListUsers();
+
+        $this->render('users', [
+            'sidebar' => UserOperations::getMenuLinks(),
+            'users' => $users,
+            'role' => UserOperations::getRoleUser(),
         ]);
     }
 }

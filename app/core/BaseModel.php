@@ -18,7 +18,7 @@ abstract class BaseModel
                 $config['password']
             );
         } catch (PDOException $ex) {
-            echo 'Ошибка' . ex->getMassage() . '<br>';
+            echo 'Ошибка' . $ex->getMessage() . '<br>';
             die();
         }
     }

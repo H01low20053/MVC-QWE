@@ -2,6 +2,8 @@
 
 namespace app\core;
 
+use app\lib\UserOperations;
+
 class Router
 {
     protected $params = [];
@@ -10,6 +12,12 @@ class Router
     {
         $url = trim($_SERVER['REQUEST_URI'], '/');
         if (!empty($url)) {
+            if (strpos($url, '?') !== false){
+                $link = explode('?', $url);
+                if (!empty($link[0])){
+                    $url = $link[0];
+                }
+            }
             $params = explode('/', $url);
             if (!empty($params[0]) && !empty($params[1])) {
                 $this->params = [
@@ -22,8 +30,8 @@ class Router
         } else {
             $params = require 'app/config/params.php';
             $this->params = [
-                'controller' => 'defaultController',
-                'action' => 'defaultAction'
+                'controller' => $params['defaultController'],
+                'action' => $params['defaultAction']
             ];
         }
         return true;
@@ -53,14 +61,14 @@ class Router
         }
     }
 
-    private function checkBehaviors()
+    private function checkBehaviors($behaviors)
     {
         if (empty($behaviors['access']['rules'])){
             return true;
         }
         foreach ($behaviors['access']['rules'] as $rule){
             if (in_array($this->params['action'], $rule['actions'])){
-                if (in_array(UserOperations::getRoleUser(), $rule['rules'])){
+                if (in_array(UserOperations::getRoleUser(), $rule['roles'])){
                     return true;
                 } else {
                     if (isset($rule['matchCallback'])) {
